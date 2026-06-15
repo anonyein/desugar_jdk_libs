@@ -94,6 +94,20 @@ abstract class ReferencePipeline<P_IN, P_OUT>
         super(upstream, opFlags);
     }
 
+    // FOR DESUGAR: Add constructor for the GathererOp.
+    /**
+      * Constructor for appending an intermediate operation onto an existing
+      * pipeline.
+      *
+      * @param upupstream the upstream of the upstream element source
+      * @param upstream the upstream element source
+      * @param opFlags The operation flags for this operation, described in
+      *        {@link StreamOpFlag}
+      */
+     protected ReferencePipeline(AbstractPipeline<?, P_IN, ?> upupstream, AbstractPipeline<?, P_IN, ?> upstream, int opFlags) {
+         super(upupstream, upstream, opFlags);
+     }
+
     // Shape-specific methods
 
     @Override
@@ -563,9 +577,16 @@ abstract class ReferencePipeline<P_IN, P_OUT>
         return evaluate(ReduceOps.makeRef(identity, accumulator, combiner));
     }
 
+    // For desugar: Add a gather operation.
+    @Override
+    public final <R> Stream<R> gather(Gatherer<? super P_OUT, ?, R> gatherer) {
+        return GathererOp.of(this, gatherer);
+    }
+
+    // For desugar: Remove the final modifier.
     @Override
     @SuppressWarnings("unchecked")
-    public final <R, A> R collect(Collector<? super P_OUT, A, R> collector) {
+    public <R, A> R collect(Collector<? super P_OUT, A, R> collector) {
         A container;
         if (isParallel()
                 && (collector.characteristics().contains(Collector.Characteristics.CONCURRENT))
@@ -582,8 +603,9 @@ abstract class ReferencePipeline<P_IN, P_OUT>
                : collector.finisher().apply(container);
     }
 
+    // For desugar: Remove the final modifier.
     @Override
-    public final <R> R collect(Supplier<R> supplier,
+    public <R> R collect(Supplier<R> supplier,
                                BiConsumer<R, ? super P_OUT> accumulator,
                                BiConsumer<R, R> combiner) {
         return evaluate(ReduceOps.makeRef(supplier, accumulator, combiner));
