@@ -26,13 +26,13 @@ jobs:
         run: echo "6.5.0" > .bazelversion
 
       # 修改所有 VERSION_JDK11*.txt 文件
-      - name: Update version to 2.1.6-SNAPSHOT
+      - name: Update version to 2.1.6
         run: |
           # 查找所有 VERSION_JDK11*.txt 文件并替换版本号
           for file in VERSION_JDK11*.txt; do
             if [ -f "$file" ]; then
-              echo "Updating $file from 2.1.5 to 2.1.6-SNAPSHOT"
-              sed -i 's/2.1.5/2.1.6-local/g' "$file"
+              echo "Updating $file from 2.1.5 to 2.1.6"
+              sed -i 's/2.1.5/2.1.6/g' "$file"
             fi
           done
           
