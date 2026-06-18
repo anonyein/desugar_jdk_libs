@@ -1,10 +1,10 @@
-name: Build and Package desugar_jdk_libs_nio
+name: Build desugar_jdk_libs_nio
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ master ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ master ]
   workflow_dispatch:
 
 jobs:
@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up JDK 11
@@ -21,13 +21,49 @@ jobs:
           distribution: 'temurin'
           java-version: '11'
 
-      # 移除 bazelbuild/setup-bazelisk@v3 这个步骤
-      # 直接使用预装的 bazelisk 进行构建
-      - name: Build desugar_jdk_libs_nio
-        run: bazel build //:maven_release_jdk11_nio
+      # 强制使用 Bazel 6.5.0（避免 Python 规则缺失）
+      - name: Pin Bazel version
+        run: echo "6.5.0" > .bazelversion
+
+      # 使用预装的 Bazelisk（会自动读取 .bazelversion）
+      - name: Discover build target
+        id: find_target
+        run: |
+          # 查找所有 genrule，筛选包含 nio 或 zip 的目标
+          TARGET=$(bazel query 'kind("genrule", //...)' 2>/dev/null | grep -i nio | head -n1)
+          if [ -z "$TARGET" ]; then
+            # 如果没找到，列出所有可用的 maven_release 目标
+            TARGET=$(bazel query '//:maven_release*' 2>/dev/null | head -n1)
+          fi
+          if [ -z "$TARGET" ]; then
+            echo "No suitable target found. Available targets:"
+            bazel query //...
+            exit 1
+          fi
+          echo "target=$TARGET" >> $GITHUB_OUTPUT
+          echo "Found target: $TARGET"
+
+      - name: Build NIO package
+        run: bazel build ${{ steps.find_target.outputs.target }}
+
+      # 查找生成的 zip 文件（bazel-bin 目录下）
+      - name: Locate and upload artifact
+        run: |
+          # 从目标名提取输出文件名，通常为 desugar_jdk_libs_*.zip
+          ZIP_FILE=$(find bazel-bin -maxdepth 1 -name "desugar_jdk_libs_*.zip" | head -n1)
+          if [ -z "$ZIP_FILE" ]; then
+            echo "No zip found in bazel-bin/"
+            exit 1
+          fi
+          echo "Found zip: $ZIP_FILE"
+          # 使用 upload-artifact 需要先确定路径，但 upload-artifact 可以接受通配符，
+          # 这里直接传递文件名
+          echo "zip_path=$ZIP_FILE" >> $GITHUB_OUTPUT
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: desugar_jdk_libs_nio_package
-          path: bazel-bin/desugar_jdk_libs_jdk11_nio.zip
+          name: desugar_jdk_libs_nio
+          # 直接使用查找出的路径，若为相对路径则在 runner 工作目录下
+          path: bazel-bin/desugar_jdk_libs_*.zip
+          if-no-files-found: error
