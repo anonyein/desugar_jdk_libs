@@ -25,6 +25,21 @@ jobs:
       - name: Pin Bazel version
         run: echo "6.5.0" > .bazelversion
 
+      # 修改所有 VERSION_JDK11*.txt 文件
+      - name: Update version to 2.1.6-SNAPSHOT
+        run: |
+          # 查找所有 VERSION_JDK11*.txt 文件并替换版本号
+          for file in VERSION_JDK11*.txt; do
+            if [ -f "$file" ]; then
+              echo "Updating $file from 2.1.5 to 2.1.6-SNAPSHOT"
+              sed -i 's/2.1.5/2.1.6-SNAPSHOT/g' "$file"
+            fi
+          done
+          
+          # 验证是否修改成功
+          echo "Current versions:"
+          cat VERSION_JDK11*.txt
+
       # 构建所有 maven_release 目标
       - name: Build all Maven release targets
         run: |
