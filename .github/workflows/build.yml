@@ -32,7 +32,7 @@ jobs:
           for file in VERSION_JDK11*.txt; do
             if [ -f "$file" ]; then
               echo "Updating $file from 2.1.5 to 2.1.6-SNAPSHOT"
-              sed -i 's/2.1.5/2.1.6-SNAPSHOT/g' "$file"
+              sed -i 's/2.1.5/2.1.6-local/g' "$file"
             fi
           done
           
