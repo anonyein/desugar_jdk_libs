@@ -1,4 +1,4 @@
-name: Build and Package desugar_jdk_libs_nio
+name: Build All Desugar JDK Libs Packages
 
 on:
   push:
@@ -21,33 +21,22 @@ jobs:
           distribution: 'temurin'
           java-version: '11'
 
-      # 固定 Bazel 版本（6.5.0 避免 Python 规则缺失）
+      # 固定 Bazel 版本（6.5.0 可避免 Python 规则缺失问题）
       - name: Pin Bazel version
         run: echo "6.5.0" > .bazelversion
 
-      # 发现目标（可选，但保留动态查找以防命名变化）
-      - name: Discover build target
-        id: find_target
+      # 构建所有 maven_release 目标
+      - name: Build all Maven release targets
         run: |
-          TARGET=$(bazel query 'kind("genrule", //...)' 2>/dev/null | grep -i nio | head -n1)
-          if [ -z "$TARGET" ]; then
-            TARGET=$(bazel query '//:maven_release*' 2>/dev/null | head -n1)
-          fi
-          if [ -z "$TARGET" ]; then
-            echo "No suitable target found. Available targets:"
-            bazel query //...
-            exit 1
-          fi
-          echo "target=$TARGET" >> $GITHUB_OUTPUT
-          echo "Found target: $TARGET"
+          bazel build //:maven_release_jdk11
+          bazel build //:maven_release_jdk11_legacy
+          bazel build //:maven_release_jdk11_minimal
+          bazel build //:maven_release_jdk11_nio
 
-      - name: Build NIO package
-        run: bazel build ${{ steps.find_target.outputs.target }}
-
-      # 直接使用确切的输出文件名上传
-      - name: Upload artifact
+      # 上传所有生成的 zip 包
+      - name: Upload all artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: desugar_jdk_libs_nio
-          path: bazel-bin/desugar_jdk_libs_jdk11_nio.zip
+          name: desugar_jdk_libs_packages
+          path: bazel-bin/*.zip
           if-no-files-found: error
